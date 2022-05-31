@@ -1,0 +1,93 @@
+---
+title: "Canadian Census: Share of Driver for Commute in Labor Market"
+output: html_document
+date: '2022-05-27'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(cancensus)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(sf)
+library(stringr)
+
+
+# search_census_vectors("drive", "CA01")
+```
+
+## Get Variables 
+
+
+
+```{r cars}
+
+
+ca_16<- get_census(dataset='CA16', regions=list(CSD="5915022"),
+            vectors=c("v_CA16_5795","v_CA16_5792"),
+           level='Regions', labels = "short")
+    
+
+
+ca_11<- get_census(dataset='CA11', regions=list(CSD="5915022"),
+            vectors=c("v_CA11N_2194",  "v_CA11N_2191"),
+           level='Regions', labels = "short")
+
+ca_06<- get_census(dataset='CA06', regions=list(CSD="5915022"),
+            vectors=c("v_CA06_1101", "v_CA06_1100"),
+           level='Regions', labels = "short")
+
+ca_01<- get_census(dataset='CA01', regions=list(CSD="5915022"),
+            vectors=c("v_CA01_1255", "v_CA01_1254", 'v_CA01_1264', 'v_CA01_1263'),
+           level='Regions', labels = "short")
+
+```
+
+## Cleaning Datasets
+
+
+```{r pressure, echo=FALSE}
+car<- ca_16 %>%
+  inner_join(ca_11, by = "GeoUID") %>%
+  select(GeoUID, car2016 = 'v_CA16_5795', 
+         labor2016= 'v_CA16_5792', 
+         car2011= 'v_CA11N_2194', labor2011= 'v_CA11N_2191') %>%
+  inner_join(ca_06, by = 'GeoUID') %>%
+  inner_join(ca_01, by = 'GeoUID') %>%
+  select(GeoUID, car2001 = 'v_CA01_1255',
+         labor2001 = 'v_CA01_1254', 
+         car2006 = 'v_CA06_1101', 
+         labor2006= 'v_CA06_1100', 
+         car2011, labor2011, car2016, labor2016) %>%
+  mutate(r16 = car2016/labor2016, 
+         r11 = car2011/labor2011,
+         r06 = car2006/labor2006,
+         r01 = car2001/labor2001)
+
+```
+
+## Plots 
+```{r image}
+car1 <- data.frame(
+  year = c(2001, 2006, 2011, 2016),
+  labor = c (car$labor2001,car$labor2006, car$labor2011, car$labor2016 ),
+  car_work = c(car$car2001, car$car2006, car$car2011, car$car2016), 
+  ratio = c(car$r01, car$r06, car$r11, car$r16)
+)
+
+
+car1%>%
+  ggplot (aes(x = year, 
+              y = ratio))+
+  geom_bar(stat= 'identity')+
+  scale_y_continuous(labels=scales::percent)+
+  labs( title = "Canadian commute in car in labor market share",
+        y = "Ratio of car commuters in labor market",
+        x= NULL,
+        caption = 'StatCan Census')
+  
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
